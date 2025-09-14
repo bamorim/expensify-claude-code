@@ -1,103 +1,183 @@
-# CLAUDE.md
+# Default Agent Workflow Behavior
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Primary Workflow
 
-## Development Commands
+When a user provides a prompt, follow this workflow unless explicitly stated otherwise:
 
-### Core Development
-- `pnpm dev` - Start development server with Turbo
-- `pnpm build` - Build production application
-- `pnpm start` - Start production server
-- `pnpm preview` - Build and start in production mode
+1. **Check Product Requirements**: First examine `docs/product/` for relevant PRDs (Product Requirements Documents)
+   - Review `docs/product/prd-main.md` for core system requirements
+   - Check `docs/product/prd-features/` for specific feature requirements
+   - Understand the current product vision and priorities
 
-### Database Operations
-- `pnpm db:generate` - Generate Prisma migrations for development
-- `pnpm db:migrate` - Deploy Prisma migrations to production
-- `pnpm db:push` - Push schema changes to database (dev/test)
-- `pnpm db:push:test` - Push schema to test database
-- `pnpm db:studio` - Open Prisma Studio on port 5555
-- `pnpm db:studio:test` - Open Prisma Studio for test database on port 5556
+2. **Identify Current Task**: Look for existing tasks in `docs/tasks/`
+   - If tasks exist, prioritize the highest priority or most recent task
+   - If multiple tasks exist, ask user which to focus on
+   - If no tasks exist, proceed to step 3
 
-### Code Quality & Testing
-- `pnpm check` - Run linting and type checking
-- `pnpm lint` - Run ESLint
-- `pnpm lint:fix` - Run ESLint with auto-fix
-- `pnpm typecheck` - Run TypeScript type checking
-- `pnpm format:check` - Check Prettier formatting
-- `pnpm format:write` - Apply Prettier formatting
-- `pnpm test` - Run all tests with Vitest
-- `pnpm test:reset` - Reset test database
+3. **Task Consultation**: If no current task exists
+   - Present the user with potential next steps based on PRD priorities
+   - Suggest tasks that align with the product roadmap
+   - Ask for clarification on what the user would like to work on
 
-### Testing Environments
-- **Server tests**: `src/server/**/*.test.ts` - Run in Node.js environment
-- **App tests**: `src/app/**/*.test.{ts,tsx}` - Run in jsdom environment with React setup
+4. **Task Execution**: When working on a task
+   - Break down complex tasks into subtasks
+   - Update task status and progress
+   - Document any blockers or decisions made
 
-## Architecture Overview
+5. **Subtask Management**: At any point during development
+   - Add new subtasks to existing tasks as needed
+   - Update task dependencies and priorities
+   - Ensure subtasks are properly documented
 
-### T3 Stack Foundation
-Built with create-t3-app using:
-- **Next.js** with App Router
-- **TypeScript** for type safety
-- **Prisma** with PostgreSQL
-- **tRPC** for end-to-end type-safe APIs
-- **NextAuth** for authentication
-- **Tailwind CSS** for styling
-- **Vitest** for testing
+## Architectural Decision Process
 
-### Project Structure
-```
-src/
-├── app/                    # Next.js App Router pages and components
-├── server/
-│   ├── api/
-│   │   ├── root.ts        # Main tRPC router
-│   │   ├── trpc.ts        # tRPC configuration and middleware
-│   │   └── routers/       # Domain-specific business logic
-│   ├── auth/              # NextAuth configuration
-│   └── db/                # Prisma client and test mocks
-├── trpc/                  # Client-side tRPC setup
-└── styles/                # Global styles
-```
+When making architectural decisions:
 
-### Key Architectural Patterns
+1. **Explain Changes**: First explain the proposed changes to the user
+   - Describe the problem being solved
+   - Present the proposed solution
+   - Highlight trade-offs and alternatives considered
 
-#### Business Logic in tRPC Routers
-Business logic is organized directly within tRPC routers rather than separate service layers:
-- Keeps architecture simple and focused
-- Provides direct database access through Prisma
-- Maintains full end-to-end type safety
-- Simplifies testing with `createCaller`
+2. **Create ADR**: If the decision is significant, create an Architectural Decision Record
+   - Use the template in `docs/templates/adr.md`
+   - Document the context, decision, and consequences
+   - Place in `docs/technical/decisions/`
 
-#### Transactional Testing
-Uses `@chax-at/transactional-prisma-testing` for database tests:
-- Each test runs in its own transaction
-- Automatic rollback prevents test contamination
-- Real database operations with isolation
-- Mock database client in `src/server/db/__mocks__/index.ts`
+3. **Update Architecture**: Update `docs/technical/architecture.md` if needed
+   - Add new architectural patterns or components
+   - Update technology stack information
+   - Document new service boundaries or data flows
 
-#### Multi-Environment Testing
-Vitest configuration supports two test environments:
-- **Node environment**: For server-side business logic tests
-- **jsdom environment**: For React component tests with proper setup
+# Technical Details
 
-### Development Guidelines
+## Project Structure
 
-#### Testing Strategy
-- **Test business logic** in tRPC procedures using transactional testing
-- **Use `createCaller`** for end-to-end procedure testing
-- **Keep component tests simple** - focus on stateless components
-- **Prefer manual testing** for complex UI interactions
-- **Test database operations** with real Prisma transactions
+- **Framework**: T3 Stack with Next.js, TypeScript, Prisma, NextAuth, tRPC and Tailwind CSS
+- **Database**: PostgreSQL with Prisma ORM
+- **Testing**: Vitest for unit and integration tests
+- **Package Manager**: pnpm
+- **Code Quality**: ESLint + Prettier
 
-#### Code Organization
-- Place business logic directly in tRPC routers
-- Use Zod schemas for input validation
-- Leverage Prisma for type-safe database operations
-- Organize routers by domain/feature
-- Keep authentication logic in NextAuth configuration
+## Development Patterns
 
-#### Environment Setup
-- Copy `.env.example` to `.env` and configure
-- Use `docker compose up -d` to start PostgreSQL
-- Run `pnpm db:push` to sync schema to database
-- Use separate test database configured in `.env.test`
+- **API Layer**: tRPC routers with business logic organized directly in procedures
+- **Testing**: Unit tests alongside router files (`*.test.ts`) using transactional testing
+- **Type Safety**: Full TypeScript support with Zod for runtime validation
+
+## Code Standards
+
+- **File Naming**: kebab-case for files, PascalCase for components/classes
+- **Imports**: Use relative imports for local files, absolute imports for packages
+- **Error Handling**: Proper error boundaries and user-friendly error messages
+- **Accessibility**: WCAG 2.1 AA compliance for all UI components
+
+## Database Guidelines
+
+- **Schema Changes**: Always create migrations for schema changes
+- **Multi-tenancy**: Ensure proper organization-scoped data isolation
+- **Performance**: Use appropriate indexes and query optimization
+- **Relationships**: Maintain referential integrity with foreign keys
+
+## Security Considerations
+
+- **Authentication**: Magic code email-based authentication
+- **Authorization**: Role-based access control (Admin/Member)
+- **Data Isolation**: Organization-scoped data access
+- **Input Validation**: Zod schemas for all user inputs
+
+## Testing Strategy
+
+- **Unit Tests**: Test individual tRPC procedures and components
+- **Integration Tests**: Test procedures end-to-end using `createCaller` with transactional testing
+- **Test Coverage**: Aim for high coverage of business logic in procedures
+- **Mock Strategy**: Use `vitest-mock-extended` for Prisma mocking when needed
+- **Transactional Testing**: Use `@chax-at/transactional-prisma-testing` for database operations
+- When testing server code that require the database, remember to call `vi.mock("~/server/db")` to enable transactional testing
+
+## Performance Requirements
+
+- **Page Load**: <2 seconds for all pages
+- **Database Queries**: Optimized with proper indexing
+- **Bundle Size**: Minimize client-side JavaScript
+- **Caching**: Implement appropriate caching strategies
+
+## Documentation Standards
+
+- **Code Comments**: JSDoc for public APIs and complex logic
+- **README Updates**: Keep README.md current with setup instructions
+- **API Documentation**: Document all endpoints and their schemas
+- **Architecture Updates**: Keep technical docs current with implementation
+
+## Git Workflow
+
+- **Branch Naming**: `feature/`, `bugfix/`, `hotfix/` prefixes
+- **Commit Messages**: Conventional commits format
+- **Pull Requests**: Include tests and documentation updates
+- **Code Review**: Ensure all changes follow project standards
+
+## Environment Management
+
+- **Environment Variables**: Use `.env` files for configuration
+- **Secrets**: Never commit sensitive data to version control
+- **Database**: Use separate databases for development/testing/production
+- **Dependencies**: Keep dependencies updated and secure
+
+## Monitoring and Observability
+
+- **Error Tracking**: Implement proper error logging
+- **Performance Monitoring**: Track key metrics and user experience
+- **Health Checks**: Implement system health endpoints
+- **Logging**: Structured logging for debugging and monitoring
+
+# Task Management Guidelines
+
+## Task Creation
+
+- Use the task template in `docs/templates/task.md`
+- Assign appropriate priority levels (P0, P1, P2)
+- Include acceptance criteria
+- Link to relevant PRDs and technical decisions
+
+## Task Updates
+
+- Update progress regularly
+- Document any blockers or dependencies
+- Add TODOs as needed during development
+- Complete TODOs while progressing
+- Potentailly write status updates to describe findings and other important notes
+- Mark tasks as complete with verification
+
+## Task Prioritization
+
+- P0: Critical path items blocking other work
+- P1: High priority features from PRD
+- P2: Nice-to-have features and improvements
+- Consider dependencies and resource availability
+
+# Communication Guidelines
+
+## User Interaction
+
+- Always explain your reasoning and approach
+- Present options when multiple solutions exist
+- Ask for clarification when requirements are unclear
+- Provide progress updates on long-running tasks
+
+## Decision Documentation
+
+- Document all significant technical decisions
+- Explain trade-offs and alternatives considered
+- Update relevant documentation after decisions
+- Link decisions to specific tasks or features
+
+## Code Review Process
+
+- Review your own code before presenting to user
+- Ensure all tests pass and documentation is updated
+- Consider edge cases and error scenarios
+- Validate against project standards and requirements
+
+## Other Guidelines
+
+- Never run npx, prefer a defined pnpm run task or if needed use pnpm exec.
+
