@@ -1,11 +1,13 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "mcp__Prisma-Local__migrate-dev",
+      "Bash(pnpm run check:*)"
+    ]
+  },
   "enabledMcpjsonServers": [
     "Prisma-Local",
     "LSP"
-  ],
-  "permissions": {
-    "allow": [
-      "Bash(mkdir:*)"
-    ]
-  }
+  ]
 }
