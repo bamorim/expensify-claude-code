@@ -5,6 +5,7 @@ import { api } from "~/trpc/react";
 import { UpdateOrganization } from "./update-organization";
 import { InviteUser } from "./invite-user";
 import { OrganizationInvitations } from "./organization-invitations";
+import { CategoryList } from "./category-list";
 
 interface OrganizationDetailsProps {
   organizationId: string;
@@ -39,6 +40,11 @@ export function OrganizationDetails({ organizationId }: OrganizationDetailsProps
         />
 
         <OrganizationInvitations
+          organizationId={organizationId}
+          userRole={organization.userRole}
+        />
+
+        <CategoryList
           organizationId={organizationId}
           userRole={organization.userRole}
         />

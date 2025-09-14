@@ -3,7 +3,8 @@
     "allow": [
       "Bash(mkdir:*)",
       "mcp__Prisma-Local__migrate-dev",
-      "Bash(pnpm run check:*)"
+      "Bash(pnpm run check:*)",
+      "Bash(pnpm run:*)"
     ]
   },
   "enabledMcpjsonServers": [
