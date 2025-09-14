@@ -48,6 +48,7 @@ model User {
     sessions      Session[]
     memberships   Membership[]
     createdOrganizations Organization[]
+    sentInvitations Invitation[] @relation("InvitedBy")
 }
 
 model Organization {
@@ -60,6 +61,7 @@ model Organization {
     createdById String
 
     memberships Membership[]
+    invitations Invitation[]
 
     @@index([name])
 }
@@ -82,6 +84,32 @@ model Membership {
 enum Role {
     ADMIN
     MEMBER
+}
+
+enum InvitationStatus {
+    PENDING
+    ACCEPTED
+    EXPIRED
+}
+
+model Invitation {
+    id             String           @id @default(cuid())
+    email          String
+    role           Role             @default(MEMBER)
+    status         InvitationStatus @default(PENDING)
+    token          String           @unique @default(cuid())
+    createdAt      DateTime         @default(now())
+    expiresAt      DateTime
+
+    organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    organizationId String
+    invitedBy      User         @relation("InvitedBy", fields: [invitedById], references: [id])
+    invitedById    String
+
+    @@unique([email, organizationId])
+    @@index([organizationId])
+    @@index([email])
+    @@index([token])
 }
 
 model VerificationToken {

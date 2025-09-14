@@ -2,13 +2,17 @@
 
 import Link from "next/link";
 import { api } from "~/trpc/react";
+import { PendingInvitations } from "./pending-invitations";
 
 export function OrganizationList() {
   const [organizations] = api.organization.list.useSuspenseQuery();
 
   return (
-    <div className="w-full max-w-2xl">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="w-full max-w-2xl space-y-8">
+      <PendingInvitations />
+
+      <div>
+        <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Your Organizations</h2>
         <Link
           href="/organizations/new"
@@ -54,6 +58,7 @@ export function OrganizationList() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

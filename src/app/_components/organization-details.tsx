@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { api } from "~/trpc/react";
 import { UpdateOrganization } from "./update-organization";
+import { InviteUser } from "./invite-user";
+import { OrganizationInvitations } from "./organization-invitations";
 
 interface OrganizationDetailsProps {
   organizationId: string;
@@ -28,6 +30,16 @@ export function OrganizationDetails({ organizationId }: OrganizationDetailsProps
         <UpdateOrganization
           organizationId={organizationId}
           currentName={organization.name}
+          userRole={organization.userRole}
+        />
+
+        <InviteUser
+          organizationId={organizationId}
+          userRole={organization.userRole}
+        />
+
+        <OrganizationInvitations
+          organizationId={organizationId}
           userRole={organization.userRole}
         />
 

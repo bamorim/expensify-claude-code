@@ -94,6 +94,37 @@ When making architectural decisions:
 - **Transactional Testing**: Use `@chax-at/transactional-prisma-testing` for database operations
 - When testing server code that require the database, remember to call `vi.mock("~/server/db")` to enable transactional testing
 
+### Testing Patterns for tRPC Routers
+
+When writing tests for tRPC routers, follow these patterns:
+
+1. **Database Mocking**: Always call `vi.mock("~/server/db")` to enable transactional testing. The mock is automatically configured in `src/server/db/__mocks__/index.ts`
+
+2. **Auth Mocking**: Mock the auth module with:
+   ```typescript
+   vi.mock("~/server/auth", () => ({
+     auth: vi.fn(),
+   }));
+   ```
+
+3. **Test Structure**: Use the router's `createCaller` method directly:
+   ```typescript
+   const caller = routerName.createCaller({
+     db: db,
+     session: mockSession,
+     headers: new Headers(),
+   });
+   ```
+
+4. **Data Setup**: Create test data using the mocked `db` directly:
+   ```typescript
+   const user = await db.user.create({
+     data: { name: "Test User", email: faker.internet.email() }
+   });
+   ```
+
+5. **Do NOT manually import or use `@chax-at/transactional-prisma-testing`** - this is handled automatically by the mock
+
 ## Performance Requirements
 
 - **Page Load**: <2 seconds for all pages
