@@ -2,5 +2,10 @@
   "enabledMcpjsonServers": [
     "Prisma-Local",
     "LSP"
-  ]
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)"
+    ]
+  }
 }
