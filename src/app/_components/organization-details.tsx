@@ -25,9 +25,17 @@ export function OrganizationDetails({ organizationId }: OrganizationDetailsProps
       <div className="w-full max-w-4xl space-y-8">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-white mb-2">{organization.name}</h1>
-          <p className="text-gray-400">
+          <p className="text-gray-400 mb-4">
             Created {new Date(organization.createdAt).toLocaleDateString()} by {organization.createdBy.name ?? organization.createdBy.email}
           </p>
+          <div className="flex justify-center gap-4">
+            <a
+              href={`/organizations/${organizationId}/expenses`}
+              className="rounded-lg bg-green-600 px-6 py-3 font-semibold text-white transition hover:bg-green-700"
+            >
+              My Expenses
+            </a>
+          </div>
         </div>
 
         <UpdateOrganization

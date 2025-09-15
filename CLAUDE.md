@@ -211,4 +211,4 @@ When writing tests for tRPC routers, follow these patterns:
 ## Other Guidelines
 
 - Never run npx, prefer a defined pnpm run task or if needed use pnpm exec.
-
+- Whenever you made changes to the database and want to run tests, run `pnpm test:reset` before

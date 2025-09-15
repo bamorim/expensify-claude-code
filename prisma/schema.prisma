@@ -50,6 +50,8 @@ model User {
     createdOrganizations Organization[]
     sentInvitations Invitation[] @relation("InvitedBy")
     policies      Policy[]
+    expenses      Expense[]
+    reviewedExpenses Expense[] @relation("ExpenseReviewer")
 }
 
 model Organization {
@@ -65,6 +67,7 @@ model Organization {
     invitations Invitation[]
     expenseCategories ExpenseCategory[]
     policies    Policy[]
+    expenses    Expense[]
 
     @@index([name])
 }
@@ -130,6 +133,7 @@ model ExpenseCategory {
     organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
     organizationId String
     policies       Policy[]
+    expenses       Expense[]
 
     @@unique([name, organizationId])
     @@index([organizationId])
@@ -155,10 +159,55 @@ model Policy {
     user           User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
     userId         String?
 
+    // Expenses that used this policy
+    expenses       Expense[]
+
     @@unique([organizationId, categoryId, userId]) // One policy per org+category+user combination
     @@index([organizationId])
     @@index([categoryId])
     @@index([userId])
+}
+
+enum ExpenseStatus {
+    SUBMITTED
+    APPROVED
+    REJECTED
+}
+
+model Expense {
+    id           String        @id @default(cuid())
+    amount       Decimal       @db.Decimal(10, 2) // Amount in cents
+    date         DateTime
+    description  String
+    status       ExpenseStatus @default(SUBMITTED)
+    createdAt    DateTime      @default(now())
+    updatedAt    DateTime      @updatedAt
+
+    // User who submitted the expense
+    user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId       String
+
+    // Organization scope
+    organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    organizationId String
+
+    // Category
+    category     ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+    categoryId   String
+
+    // Policy applied at submission time (for audit trail)
+    policy       Policy        @relation(fields: [policyId], references: [id], onDelete: Restrict)
+    policyId     String
+
+    // Reviewer (null for auto-approved expenses)
+    reviewer     User?         @relation("ExpenseReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+    reviewerId   String?
+
+    @@index([organizationId])
+    @@index([userId])
+    @@index([categoryId])
+    @@index([status])
+    @@index([date])
 }
 
 model VerificationToken {
