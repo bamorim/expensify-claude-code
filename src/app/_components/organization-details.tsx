@@ -6,6 +6,8 @@ import { UpdateOrganization } from "./update-organization";
 import { InviteUser } from "./invite-user";
 import { OrganizationInvitations } from "./organization-invitations";
 import { CategoryList } from "./category-list";
+import { PolicyList } from "./policy-list";
+import { PolicyDebuggingTool } from "./policy-debugging-tool";
 
 interface OrganizationDetailsProps {
   organizationId: string;
@@ -45,6 +47,16 @@ export function OrganizationDetails({ organizationId }: OrganizationDetailsProps
         />
 
         <CategoryList
+          organizationId={organizationId}
+          userRole={organization.userRole}
+        />
+
+        <PolicyList
+          organizationId={organizationId}
+          userRole={organization.userRole}
+        />
+
+        <PolicyDebuggingTool
           organizationId={organizationId}
           userRole={organization.userRole}
         />

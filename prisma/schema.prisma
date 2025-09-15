@@ -49,6 +49,7 @@ model User {
     memberships   Membership[]
     createdOrganizations Organization[]
     sentInvitations Invitation[] @relation("InvitedBy")
+    policies      Policy[]
 }
 
 model Organization {
@@ -63,6 +64,7 @@ model Organization {
     memberships Membership[]
     invitations Invitation[]
     expenseCategories ExpenseCategory[]
+    policies    Policy[]
 
     @@index([name])
 }
@@ -91,6 +93,11 @@ enum InvitationStatus {
     PENDING
     ACCEPTED
     EXPIRED
+}
+
+enum PolicyPeriod {
+    DAILY
+    MONTHLY
 }
 
 model Invitation {
@@ -122,9 +129,36 @@ model ExpenseCategory {
 
     organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
     organizationId String
+    policies       Policy[]
 
     @@unique([name, organizationId])
     @@index([organizationId])
+}
+
+model Policy {
+    id             String      @id @default(cuid())
+    maxAmount      Decimal     @db.Decimal(10, 2) // Maximum amount in cents
+    period         PolicyPeriod
+    requiresReview Boolean     @default(false) // If true, requires manual review; if false, auto-approve
+    createdAt      DateTime    @default(now())
+    updatedAt      DateTime    @updatedAt
+
+    // Organization-scoped policy
+    organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+    organizationId String
+
+    // Category this policy applies to
+    category       ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+    categoryId     String
+
+    // User-specific override (optional - if null, applies to entire organization)
+    user           User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId         String?
+
+    @@unique([organizationId, categoryId, userId]) // One policy per org+category+user combination
+    @@index([organizationId])
+    @@index([categoryId])
+    @@index([userId])
 }
 
 model VerificationToken {
