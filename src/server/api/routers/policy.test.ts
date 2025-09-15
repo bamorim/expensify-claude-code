@@ -555,6 +555,132 @@ describe("policy router", () => {
       expect(result[1]?.category.name).toBe("Travel");
       expect(result[2]?.category.name).toBe("Travel");
     });
+
+    it("should only return relevant policies for non-admin members", async () => {
+      const admin = await db.user.create({
+        data: {
+          name: "Admin User",
+          email: faker.internet.email(),
+        },
+      });
+
+      const member1 = await db.user.create({
+        data: {
+          name: "Member 1",
+          email: faker.internet.email(),
+        },
+      });
+
+      const member2 = await db.user.create({
+        data: {
+          name: "Member 2",
+          email: faker.internet.email(),
+        },
+      });
+
+      const organization = await db.organization.create({
+        data: {
+          name: "Test Organization",
+          createdById: admin.id,
+        },
+      });
+
+      await db.membership.create({
+        data: {
+          userId: admin.id,
+          organizationId: organization.id,
+          role: Role.ADMIN,
+        },
+      });
+
+      await db.membership.create({
+        data: {
+          userId: member1.id,
+          organizationId: organization.id,
+          role: Role.MEMBER,
+        },
+      });
+
+      await db.membership.create({
+        data: {
+          userId: member2.id,
+          organizationId: organization.id,
+          role: Role.MEMBER,
+        },
+      });
+
+      const category1 = await db.expenseCategory.create({
+        data: {
+          name: "Travel",
+          organizationId: organization.id,
+        },
+      });
+
+      const category2 = await db.expenseCategory.create({
+        data: {
+          name: "Food",
+          organizationId: organization.id,
+        },
+      });
+
+      // Create organization-wide policy
+      const orgPolicy = await db.policy.create({
+        data: {
+          organizationId: organization.id,
+          categoryId: category1.id,
+          maxAmount: 500.00,
+          period: PolicyPeriod.MONTHLY,
+          requiresReview: false,
+        },
+      });
+
+      // Create policy for member1
+      const member1Policy = await db.policy.create({
+        data: {
+          organizationId: organization.id,
+          categoryId: category2.id,
+          userId: member1.id,
+          maxAmount: 100.00,
+          period: PolicyPeriod.DAILY,
+          requiresReview: true,
+        },
+      });
+
+      // Create policy for member2 (member1 shouldn't see this)
+      await db.policy.create({
+        data: {
+          organizationId: organization.id,
+          categoryId: category1.id,
+          userId: member2.id,
+          maxAmount: 750.00,
+          period: PolicyPeriod.MONTHLY,
+          requiresReview: false,
+        },
+      });
+
+      const member1Session = {
+        user: member1,
+        expires: "2030-12-31T23:59:59.999Z",
+      };
+
+      const caller = policyRouter.createCaller({
+        db: db,
+        session: member1Session,
+        headers: new Headers(),
+      });
+
+      const result = await caller.listForOrganization({
+        organizationId: organization.id,
+      });
+
+      // Member1 should only see org-wide policy and their own policy
+      expect(result).toHaveLength(2);
+      const policyIds = result.map(p => p.id);
+      expect(policyIds).toContain(orgPolicy.id);
+      expect(policyIds).toContain(member1Policy.id);
+      // Should NOT contain member2's policy
+      expect(result.find(p => p.userId === member2.id)).toBeUndefined();
+    });
   });
 
   describe("getEffectivePolicy", () => {
@@ -790,6 +916,130 @@ describe("policy router", () => {
 
       expect(result.policy).toBeNull();
       expect(result.policyType).toBe("organization-wide");
+    });
+
+    it("should throw error when non-admin tries to query another user's effective policy", async () => {
+      const member1 = await db.user.create({
+        data: {
+          name: "Member 1",
+          email: faker.internet.email(),
+        },
+      });
+
+      const member2 = await db.user.create({
+        data: {
+          name: "Member 2",
+          email: faker.internet.email(),
+        },
+      });
+
+      const organization = await db.organization.create({
+        data: {
+          name: "Test Organization",
+          createdById: member1.id,
+        },
+      });
+
+      await db.membership.create({
+        data: {
+          userId: member1.id,
+          organizationId: organization.id,
+          role: Role.MEMBER,
+        },
+      });
+
+      await db.membership.create({
+        data: {
+          userId: member2.id,
+          organizationId: organization.id,
+          role: Role.MEMBER,
+        },
+      });
+
+      const category = await db.expenseCategory.create({
+        data: {
+          name: "Travel",
+          organizationId: organization.id,
+        },
+      });
+
+      const member1Session = {
+        user: member1,
+        expires: "2030-12-31T23:59:59.999Z",
+      };
+
+      const caller = policyRouter.createCaller({
+        db: db,
+        session: member1Session,
+        headers: new Headers(),
+      });
+
+      // Member1 should not be able to query member2's effective policy
+      await expect(
+        caller.getEffectivePolicy({
+          organizationId: organization.id,
+          categoryId: category.id,
+          userId: member2.id,
+        })
+      ).rejects.toThrow(TRPCError);
+    });
+
+    it("should throw error when non-admin tries to query another user's policies via listForUser", async () => {
+      const member1 = await db.user.create({
+        data: {
+          name: "Member 1",
+          email: faker.internet.email(),
+        },
+      });
+
+      const member2 = await db.user.create({
+        data: {
+          name: "Member 2",
+          email: faker.internet.email(),
+        },
+      });
+
+      const organization = await db.organization.create({
+        data: {
+          name: "Test Organization",
+          createdById: member1.id,
+        },
+      });
+
+      await db.membership.create({
+        data: {
+          userId: member1.id,
+          organizationId: organization.id,
+          role: Role.MEMBER,
+        },
+      });
+
+      await db.membership.create({
+        data: {
+          userId: member2.id,
+          organizationId: organization.id,
+          role: Role.MEMBER,
+        },
+      });
+
+      const member1Session = {
+        user: member1,
+        expires: "2030-12-31T23:59:59.999Z",
+      };
+
+      const caller = policyRouter.createCaller({
+        db: db,
+        session: member1Session,
+        headers: new Headers(),
+      });
+
+      // Member1 should not be able to query member2's policies
+      await expect(
+        caller.listForUser({
+          organizationId: organization.id,
+          userId: member2.id,
+        })
+      ).rejects.toThrow(TRPCError);
     });
   });
 });

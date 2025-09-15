@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { PolicyPeriod } from "@prisma/client";
+import { PolicyPeriod, Role } from "@prisma/client";
 
 import {
   createTRPCRouter,
@@ -163,24 +163,58 @@ export const policyRouter = createTRPCRouter({
   listForOrganization: protectedProcedure
     .input(z.object({ organizationId: z.string() }))
     .query(async ({ ctx, input }) => {
-      // Members can view policies, but only admins can modify them
-      await requireOrgMembership(ctx, input.organizationId);
+      const { role } = await requireOrgMembership(ctx, input.organizationId);
 
-      const policies = await ctx.db.policy.findMany({
-        where: {
-          organizationId: input.organizationId,
-        },
-        include: {
-          category: true,
-          user: {
-            select: { id: true, name: true, email: true },
+      const currentUserId = ctx.session?.user.id;
+
+      if (!currentUserId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "User ID is required",
+        });
+      }
+
+      let policies;
+
+      if (role === Role.ADMIN) {
+        // Admins can see all policies
+        policies = await ctx.db.policy.findMany({
+          where: {
+            organizationId: input.organizationId,
           },
-        },
-        orderBy: [
-          { category: { name: "asc" } },
-          { userId: "asc" }, // Organization-wide policies (null userId) first, then user-specific
-        ],
-      });
+          include: {
+            category: true,
+            user: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+          orderBy: [
+            { category: { name: "asc" } },
+            { userId: "asc" }, // Organization-wide policies (null userId) first, then user-specific
+          ],
+        });
+      } else {
+        // Non-admins can only see organization-wide policies and policies targeted at them
+        policies = await ctx.db.policy.findMany({
+          where: {
+            organizationId: input.organizationId,
+            OR: [
+              { userId: null }, // Organization-wide policies
+              { userId: currentUserId }, // Policies targeted at current user
+            ],
+          },
+          include: {
+            category: true,
+            user: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+          orderBy: [
+            { category: { name: "asc" } },
+            { userId: "asc" },
+          ],
+        });
+      }
 
       return policies;
     }),
@@ -191,14 +225,23 @@ export const policyRouter = createTRPCRouter({
       userId: z.string().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      await requireOrgMembership(ctx, input.organizationId);
+      const { role } = await requireOrgMembership(ctx, input.organizationId);
 
-      const targetUserId = input.userId ?? ctx.session?.user.id;
+      const currentUserId = ctx.session?.user.id;
+      const targetUserId = input.userId ?? currentUserId;
 
       if (!targetUserId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "User ID is required",
+        });
+      }
+
+      // Non-admins can only query their own policies
+      if (role !== Role.ADMIN && targetUserId !== currentUserId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only view your own policies",
         });
       }
 
@@ -240,14 +283,23 @@ export const policyRouter = createTRPCRouter({
       userId: z.string().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      await requireOrgMembership(ctx, input.organizationId);
+      const { role } = await requireOrgMembership(ctx, input.organizationId);
 
-      const targetUserId = input.userId ?? ctx.session?.user.id;
+      const currentUserId = ctx.session?.user.id;
+      const targetUserId = input.userId ?? currentUserId;
 
       if (!targetUserId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "User ID is required",
+        });
+      }
+
+      // Non-admins can only query effective policies for themselves
+      if (role !== Role.ADMIN && targetUserId !== currentUserId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only view effective policies for yourself",
         });
       }
 
